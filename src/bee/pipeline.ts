@@ -3,6 +3,7 @@ import { downloadList } from './ConversacionesByFecha';
 import { downloadDetailByDay } from './ConversacionesDetalleByDay';
 import { normalize } from '../ingest/normalize';
 import { buildIndex } from '../index/buildIndex';
+import { buildHermes } from '../hermes/buildHermes';
 
 /**
  * Pipeline de ingesta completo:
@@ -38,11 +39,14 @@ export async function runPipeline(lookbackDays = config.bee.lookbackDays): Promi
       console.log('[2/4] Sin conversaciones nuevas; salto el detalle.');
     }
 
-    console.log('[3/4] Normalizando...');
+    console.log('[3/5] Normalizando...');
     await normalize();
 
-    console.log('[4/4] Reconstruyendo indice...');
+    console.log('[4/5] Reconstruyendo indice...');
     await buildIndex();
+
+    console.log('[5/5] Actualizando memoria de Hermes (SOUL/USER/MEMORY)...');
+    await buildHermes();
 
     console.log('=== Pipeline completado ===\n');
   } catch (e) {

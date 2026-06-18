@@ -39,6 +39,10 @@ export const config = {
     timezone: 'America/Caracas',
   },
 
+  // Carpeta HOME de Hermes Agent. Si se define, ia:hermes escribe
+  // SOUL.md/USER.md/MEMORY.md directo ahi (memoria built-in de Hermes).
+  hermesHome: process.env.HERMES_HOME ?? '',
+
   // ntfy para notificaciones push. Servidor privado con token (Bearer) o ntfy.sh.
   ntfy: {
     server: process.env.NTFY_SERVER ?? 'https://ntfy.sh',

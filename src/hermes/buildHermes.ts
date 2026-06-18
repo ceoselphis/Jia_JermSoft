@@ -1,4 +1,5 @@
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import { config } from '../config';
 import { leerNormalizadas } from '../ingest/normalize';
 import { PERSONAS_SEED, PersonaSeed } from '../profile/personas.seed';
@@ -198,6 +199,23 @@ export async function buildHermes(): Promise<void> {
   console.log(`  - SOUL.md   (identidad + voz + privacidad)`);
   console.log(`  - USER.md   (perfil + ${personas.length} personas)`);
   console.log(`  - MEMORY.md (pendientes recientes)`);
+
+  // Si HERMES_HOME esta definido, escribir tambien directo en Hermes (sin copiar a mano).
+  if (config.hermesHome) {
+    try {
+      await fs.mkdir(config.hermesHome, { recursive: true });
+      for (const f of ['SOUL.md', 'USER.md', 'MEMORY.md']) {
+        await fs.copyFile(
+          path.join(config.paths.hermesDir, f),
+          path.join(config.hermesHome, f),
+        );
+      }
+      console.log(`Copiados a HERMES_HOME: ${config.hermesHome}`);
+    } catch (e) {
+      console.error('No se pudo escribir en HERMES_HOME:', e instanceof Error ? e.message : e);
+    }
+  }
+
   if (!perfil) {
     console.log('\nAviso: aun no hay perfil.json. Corre `npm run ia:profile` para enriquecer USER.md.');
   }
