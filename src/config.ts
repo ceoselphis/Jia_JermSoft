@@ -1,7 +1,15 @@
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-dotenv.config();
+/**
+ * Raiz del proyecto, independiente del cwd. Asi el MCP server funciona aunque
+ * Hermes lo arranque desde otra carpeta (stdio). dist/config.js -> ../ ; src via
+ * ts-node -> ../ ; ambos resuelven a la raiz del repo. Se puede forzar con JIA_HOME.
+ */
+const ROOT = process.env.JIA_HOME ?? path.resolve(__dirname, '..');
+
+// Cargar .env desde la raiz (no desde el cwd).
+dotenv.config({ path: path.join(ROOT, '.env') });
 
 /**
  * Configuracion central del modulo IA ("Jhonattan IA").
@@ -51,28 +59,28 @@ export const config = {
   },
 
   paths: {
-    root: process.cwd(),
+    root: ROOT,
     // Fuentes que ya genera el pipeline de Bee.
-    conversacionesPorDia: path.join(process.cwd(), 'conversaciones_por_dia'),
-    conversacionesDescargadas: path.join(process.cwd(), 'conversaciones_descargadas'),
+    conversacionesPorDia: path.join(ROOT, 'conversaciones_por_dia'),
+    conversacionesDescargadas: path.join(ROOT, 'conversaciones_descargadas'),
     // Artefactos del modulo IA.
-    dataDir: path.join(process.cwd(), 'data'),
-    normalizedDir: path.join(process.cwd(), 'data', 'normalized'),
-    normalizedFile: path.join(process.cwd(), 'data', 'normalized', 'conversaciones.jsonl'),
-    profileDir: path.join(process.cwd(), 'data', 'profile'),
-    perfilFile: path.join(process.cwd(), 'data', 'profile', 'perfil.json'),
-    personasFile: path.join(process.cwd(), 'data', 'profile', 'personas.json'),
-    estiloFile: path.join(process.cwd(), 'data', 'profile', 'estilo.md'),
-    libroFile: path.join(process.cwd(), 'data', 'profile', 'libro.md'),
-    indexDir: path.join(process.cwd(), 'data', 'index'),
-    indexFile: path.join(process.cwd(), 'data', 'index', 'lexico.json'),
-    usageDir: path.join(process.cwd(), 'data', 'usage'),
-    usageFile: path.join(process.cwd(), 'data', 'usage', 'usage.jsonl'),
+    dataDir: path.join(ROOT, 'data'),
+    normalizedDir: path.join(ROOT, 'data', 'normalized'),
+    normalizedFile: path.join(ROOT, 'data', 'normalized', 'conversaciones.jsonl'),
+    profileDir: path.join(ROOT, 'data', 'profile'),
+    perfilFile: path.join(ROOT, 'data', 'profile', 'perfil.json'),
+    personasFile: path.join(ROOT, 'data', 'profile', 'personas.json'),
+    estiloFile: path.join(ROOT, 'data', 'profile', 'estilo.md'),
+    libroFile: path.join(ROOT, 'data', 'profile', 'libro.md'),
+    indexDir: path.join(ROOT, 'data', 'index'),
+    indexFile: path.join(ROOT, 'data', 'index', 'lexico.json'),
+    usageDir: path.join(ROOT, 'data', 'usage'),
+    usageFile: path.join(ROOT, 'data', 'usage', 'usage.jsonl'),
     // Salida para Hermes Agent: los 3 archivos de su memoria built-in.
-    hermesDir: path.join(process.cwd(), 'data', 'hermes'),
-    soulFile: path.join(process.cwd(), 'data', 'hermes', 'SOUL.md'),
-    userFile: path.join(process.cwd(), 'data', 'hermes', 'USER.md'),
-    memoryFile: path.join(process.cwd(), 'data', 'hermes', 'MEMORY.md'),
+    hermesDir: path.join(ROOT, 'data', 'hermes'),
+    soulFile: path.join(ROOT, 'data', 'hermes', 'SOUL.md'),
+    userFile: path.join(ROOT, 'data', 'hermes', 'USER.md'),
+    memoryFile: path.join(ROOT, 'data', 'hermes', 'MEMORY.md'),
   },
 } as const;
 
