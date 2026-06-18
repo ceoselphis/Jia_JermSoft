@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.env
+
+# Datos personales y descargas (sensibles, no subir)
+data/**/*
+conversaciones_descargadas/**/*
+conversaciones_por_dia/**/*
+conversaciones_detalle/**/*

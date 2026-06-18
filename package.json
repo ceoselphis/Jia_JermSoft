@@ -1,0 +1,40 @@
+{
+  "name": "jia",
+  "version": "1.0.0",
+  "description": "Jhonattan IA — asistente personal sobre conversaciones de Bee Computer",
+  "main": "dist/scheduler.js",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/scheduler.js",
+    "scheduler": "ts-node src/scheduler.ts",
+    "bee:download": "ts-node src/bee/pipeline.ts",
+    "ia:normalize": "ts-node src/ingest/normalize.ts",
+    "ia:profile": "ts-node src/profile/buildProfile.ts",
+    "ia:index": "ts-node src/index/buildIndex.ts",
+    "ia": "ts-node src/cli.ts",
+    "ia:bot": "ts-node src/telegram/bot.ts",
+    "ia:gastos": "ts-node src/usage/report.ts",
+    "ia:hermes": "ts-node src/hermes/buildHermes.ts",
+    "mcp": "ts-node src/mcp/server.ts",
+    "mcp:http": "ts-node src/mcp/server.ts --http"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^16.4.5",
+    "node-cron": "^4.2.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.18",
+    "@types/node-cron": "^3.0.11",
+    "@types/node-telegram-bot-api": "^0.64.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

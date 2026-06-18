@@ -1,0 +1,419 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Jia — Documentación para desarrolladores</title><style>
+  @page { size: A4; margin: 20mm 18mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         color: #1a1a1a; line-height: 1.55; font-size: 11.5pt; max-width: 820px; margin: 0 auto; }
+  h1 { font-size: 24pt; color: #0b3d66; border-bottom: 3px solid #0b3d66; padding-bottom: 6px; margin-top: 0; }
+  h2 { font-size: 16pt; color: #0b3d66; margin-top: 26px; border-bottom: 1px solid #d0d7de; padding-bottom: 4px; }
+  h3 { font-size: 12.5pt; color: #1f6feb; margin-top: 18px; }
+  p, li { font-size: 11pt; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; font-family: "Cascadia Code", Consolas, monospace; font-size: 9.5pt; }
+  pre { background: #0d1117; color: #e6edf3; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 8.8pt; line-height: 1.4; }
+  pre code { background: none; color: inherit; padding: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 10pt; }
+  th, td { border: 1px solid #d0d7de; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #0b3d66; color: #fff; }
+  tr:nth-child(even) td { background: #f6f8fa; }
+  hr { border: none; border-top: 1px solid #d0d7de; margin: 22px 0; }
+  blockquote { border-left: 4px solid #1f6feb; margin: 12px 0; padding: 4px 14px; background: #f0f6ff; color: #344; }
+  h2 { page-break-after: avoid; }
+  pre, table { page-break-inside: avoid; }
+</style></head>
+<body><h1>Jia — Jhonattan IA</h1>
+<h3>Documentación técnica para desarrolladores · v1.0 (Fase 1)</h3>
+<hr>
+<h2>1. Resumen ejecutivo</h2>
+<p><strong>Jia (Jhonattan IA)</strong> es un asistente personal que responde y, en fases posteriores, actúa
+<strong>en nombre de Jhonattan</strong>. Se alimenta de las conversaciones que captura su dispositivo
+<strong>Bee Computer</strong> y de su libro <em>Desarrollo Personal y Superación</em> (fuente de estilo y valores).</p>
+<p>El sistema descarga las conversaciones periódicamente, las limpia y normaliza, construye un
+<strong>perfil</strong> (quién es, su gente, su voz) y permite hacerle preguntas que responde <strong>como
+Jhonattan, con citas</strong> a las conversaciones de origen.</p>
+<p><strong>Principio rector — Borrador + Aprobación:</strong> toda acción con efecto externo (responder un
+WhatsApp, un pago móvil) se genera como <em>borrador</em> y requiere aprobación humana antes de
+ejecutarse. La Fase 1 documentada aquí es <strong>solo lectura</strong>: ingesta, perfil y Q&amp;A.</p>
+<table>
+<thead>
+<tr>
+<th>Atributo</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Lenguaje</td>
+<td>TypeScript (CommonJS, target ES2020)</td>
+</tr>
+<tr>
+<td>Runtime</td>
+<td>Node.js 18+</td>
+</tr>
+<tr>
+<td>Motor IA</td>
+<td>Claude (Anthropic) — <code>claude-opus-4-8</code>, <code>claude-haiku-4-5</code></td>
+</tr>
+<tr>
+<td>Fuente de datos</td>
+<td>CLI <code>bee</code> (Bee Computer)</td>
+</tr>
+<tr>
+<td>Programación</td>
+<td><code>node-cron</code> (cada 6h, configurable)</td>
+</tr>
+<tr>
+<td>Estado</td>
+<td>Fase 1 completa (typecheck verde)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>2. Arquitectura</h2>
+<h3>2.1 Vista de alto nivel</h3>
+<pre><code>            ┌──────────────┐   bee conversations list/get
+            │   Bee CLI    │ ◄──────────────────────────────┐
+            └──────┬───────┘                                │
+                   │ texto plano                            │
+                   ▼                                        │
+   ┌───────────────────────────────┐                       │
+   │  src/bee/  (descarga)          │                       │
+   │  ByFecha → DetalleByDay        │                       │
+   └──────────────┬────────────────┘                       │
+                  │ conversaciones_por_dia/*.json           │
+                  ▼                                         │
+   ┌───────────────────────────────┐                       │
+   │ src/ingest/normalize.ts        │  limpia, dedup, ruido │
+   └──────────────┬────────────────┘                       │
+                  │ data/normalized/conversaciones.jsonl    │
+       ┌──────────┴───────────┐                             │
+       ▼                      ▼                             │
+┌──────────────┐     ┌─────────────────┐                   │
+│ profile/     │     │ index/          │                   │
+│ buildProfile │     │ buildIndex      │                   │
+│ (Claude)     │     │ retrieve()      │                   │
+└──────┬───────┘     └────────┬────────┘                   │
+       │ perfil/personas/estilo        │ top-K + citas     │
+       └──────────┬───────────┘────────┘                   │
+                  ▼                                         │
+        ┌───────────────────┐   system prompt = estilo     │
+        │ brain/ask.ts       │   + perfil + privacidad      │
+        │ (Claude)           │                              │
+        └─────────┬──────────┘                              │
+        ┌─────────┼──────────┐                              │
+        ▼         ▼          ▼                              │
+      CLI     Telegram   (WhatsApp Fase 3)                  │
+                                                            │
+   src/scheduler.ts ── node-cron 0 */6h ── runPipeline ─────┘
+</code></pre>
+<h3>2.2 Decisiones de diseño</h3>
+<ul>
+<li><strong>Proyecto independiente</strong> (<code>C:\Proyectos\Jia</code>), separado del repo <code>ClienteFeliz</code> donde nació
+el descargador de Bee, para tener tooling y ciclo de vida propios.</li>
+<li><strong>Idempotencia</strong>: <code>normalize()</code> deduplica por <code>id</code>, por lo que el cron puede solapar días sin
+generar duplicados. La ventana móvil por defecto es de 2 días.</li>
+<li><strong>RAG léxico primero</strong>: para ~250 conversaciones, una búsqueda léxica en memoria es suficiente
+y evita dependencias de vector store. Los embeddings quedan como mejora opcional (ver §9).</li>
+<li><strong>Perfil como &quot;fuente de verdad&quot;</strong>: en lugar de depender de transcripciones ruidosas en cada
+consulta, se precomputa un perfil estable (<code>perfil.json</code>, <code>personas.json</code>, <code>estilo.md</code>).</li>
+<li><strong>Privacidad por diseño</strong>: el cerebro tiene reglas explícitas para no exponer temas íntimos a
+terceros; condición previa para habilitar canales externos (WhatsApp).</li>
+</ul>
+<hr>
+<h2>3. Estructura del repositorio</h2>
+<pre><code>C:\Proyectos\Jia\
+├── package.json            scripts y dependencias
+├── tsconfig.json           TS strict, CommonJS, ES2020
+├── .env.example            plantilla de claves
+├── README.md               guía rápida (setup + comandos)
+├── CONTEXT.md              traspaso de sesión (estado/decisiones)
+├── docs/
+│   └── DOCUMENTACION-DESARROLLADORES.md   (este documento)
+├── src/
+│   ├── scheduler.ts        cron cada 6h → runPipeline
+│   ├── config.ts           carga .env; rutas; ventana/cron de Bee
+│   ├── llm.ts              cliente Anthropic (complete / completeJson)
+│   ├── types.ts            tipos compartidos
+│   ├── cli.ts              consola de preguntas
+│   ├── bee/
+│   │   ├── ConversacionesByFecha.ts        bee conversations list
+│   │   ├── ConversacionesDetalleByDay.ts   bee conversations get → por_dia
+│   │   └── pipeline.ts                      list→detalle→normalize→index
+│   ├── ingest/
+│   │   └── normalize.ts    limpieza + dedup → JSONL
+│   ├── profile/
+│   │   ├── buildProfile.ts perfil/personas/estilo (Claude)
+│   │   └── personas.seed.ts gente verificada con alias
+│   ├── index/
+│   │   └── buildIndex.ts   búsqueda léxica + retrieve()
+│   ├── brain/
+│   │   └── ask.ts          responde como Jhonattan (Claude)
+│   └── telegram/
+│       └── bot.ts          consola de control privada
+└── data/                   (en .gitignore — datos sensibles)
+    ├── profile/libro.md    libro (fuente de estilo)
+    ├── normalized/conversaciones.jsonl
+    └── index/lexico.json
+</code></pre>
+<hr>
+<h2>4. Flujo de datos y modelos</h2>
+<h3>4.1 Pipeline de ingesta (<code>src/bee/pipeline.ts</code>)</h3>
+<p><code>runPipeline(lookbackDays)</code> ejecuta en orden:</p>
+<ol>
+<li><strong><code>downloadList(start, end)</code></strong> — <code>bee conversations list</code> paginado; escribe
+<code>conversaciones_descargadas/conversaciones_filtradas.json</code>.</li>
+<li><strong><code>downloadDetailByDay(start, end)</code></strong> — <code>bee conversations get &lt;id&gt;</code> por conversación; agrupa y
+escribe <code>conversaciones_por_dia/&lt;fecha&gt;_completo.json</code> (+ <code>.txt</code> legibles).</li>
+<li><strong><code>normalize()</code></strong> — produce <code>data/normalized/conversaciones.jsonl</code>.</li>
+<li><strong><code>buildIndex()</code></strong> — valida y reporta estadísticas del índice léxico.</li>
+</ol>
+<h3>4.2 Esquema crudo de Bee (<code>*_completo.json</code>)</h3>
+<p>Array de conversaciones. Campos relevantes:</p>
+<pre><code class="language-ts">interface RawConversation {
+  id: string;
+  start_time: string; end_time: string;   // ISO
+  state: string;                            // &quot;COMPLETED&quot;
+  summary: string; atmosphere: string;
+  key_takeaways: string[]; action_items: string[];
+  raw_content: string;
+  detailed_content?: { utterances?: Utterance[] };
+}
+interface Utterance {
+  speaker: string;        // &quot;Jhonattan&quot; | &quot;Unknown&quot; | ...
+  text: string;
+  spoken_at: string | null;
+  start: number; end: number;   // offsets en segundos
+}
+</code></pre>
+<h3>4.3 Esquema normalizado (<code>conversaciones.jsonl</code>, una por línea)</h3>
+<pre><code class="language-ts">interface NormalizedConversation {
+  id: string;
+  fecha: string;          // YYYY-MM-DD (America/Caracas)
+  inicio: string; fin: string;
+  duracionMin: number;
+  summary: string; atmosphere: string;
+  key_takeaways: string[]; action_items: string[];
+  utterances: Utterance[];
+  esRuido: boolean;       // true si parece audio de fondo / medios
+}
+</code></pre>
+<p><strong>Reglas de limpieza</strong> (en <code>normalize.ts</code>):</p>
+<ul>
+<li>Marca <code>esRuido = true</code> si <code>summary</code>/<code>atmosphere</code> contienen pistas de medios (background audio,
+broadcast, podcast, radio, TV, lyrics, commentary, etc.). Por defecto la lectura excluye ruido.</li>
+<li>Colapsa utterances duplicados consecutivos y descarta textos &lt; 2 caracteres.</li>
+<li>Calcula <code>fecha</code> y <code>duracionMin</code> desde los timestamps; zona horaria America/Caracas (UTC-4).</li>
+</ul>
+<h3>4.4 Artefactos de perfil</h3>
+<table>
+<thead>
+<tr>
+<th>Archivo</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>data/profile/perfil.json</code></td>
+<td>Hechos estables: empresa, cargo, proyectos, valores, rasgos.</td>
+</tr>
+<tr>
+<td><code>data/profile/personas.json</code></td>
+<td>Directorio de gente clave (relación, prioridad, confianza, conflicto, aliases).</td>
+</tr>
+<tr>
+<td><code>data/profile/estilo.md</code></td>
+<td>Guía de voz/tono extraída del libro (se inyecta en el system prompt).</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>5. Referencia de módulos</h2>
+<h3>5.1 <code>config.ts</code></h3>
+<p>Carga <code>.env</code> (vía <code>dotenv</code>) y expone <code>config</code> (claves, modelos, rutas, parámetros de Bee).
+<code>requireConfig([&#39;anthropic&#39; | &#39;telegram&#39;])</code> lanza un error claro si falta una clave.</p>
+<h3>5.2 <code>llm.ts</code></h3>
+<ul>
+<li><code>getClient()</code> — cliente Anthropic perezoso.</li>
+<li><code>complete(prompt, opts)</code> — devuelve texto plano.</li>
+<li><code>completeJson&lt;T&gt;(prompt, opts)</code> — parsea JSON (tolera fences <code>```json</code>).</li>
+</ul>
+<h3>5.3 <code>ingest/normalize.ts</code></h3>
+<ul>
+<li><code>normalize()</code> — ingesta idempotente a JSONL (clave = <code>id</code>).</li>
+<li><code>leerNormalizadas(incluirRuido = false)</code> — lee el JSONL (excluye ruido por defecto).</li>
+</ul>
+<h3>5.4 <code>index/buildIndex.ts</code></h3>
+<ul>
+<li><code>tokens(texto)</code> — minúsculas, sin acentos, sin stopwords ES.</li>
+<li><code>retrieve(pregunta, k = 6): Cita[]</code> — scoring léxico (TF de términos de la query); pondera x2 el
+resumen y prioriza lo que dijo Jhonattan. Devuelve <code>{ id, fecha, fragmento, score }</code>.</li>
+<li><code>getConversacion(id)</code> — recupera una conversación normalizada.</li>
+<li><code>buildIndex()</code> — valida y reporta estadísticas (vocabulario, tokens).</li>
+</ul>
+<h3>5.5 <code>profile/buildProfile.ts</code></h3>
+<p>Construye perfil/personas/estilo con Claude sobre los resúmenes + libro. Inyecta
+<code>personas.seed.ts</code> como pista y <strong>garantiza</strong> (merge) que toda persona de la semilla quede en
+<code>personas.json</code> con sus aliases (evita confusiones, p. ej. <code>Yul</code> ≠ <code>Dani</code>).</p>
+<h3>5.6 <code>brain/ask.ts</code></h3>
+<ul>
+<li><code>ask(pregunta, k = 6): { respuesta, citas }</code>.</li>
+<li>Construye el system prompt con <code>estilo.md</code> + <code>perfil.json</code> + <code>personas.json</code> + <strong>reglas de
+privacidad</strong>, recupera contexto con <code>retrieve()</code> y consulta <code>claude-opus-4-8</code>.</li>
+</ul>
+<h3>5.7 Interfaces</h3>
+<ul>
+<li><code>cli.ts</code> — <code>npm run ia -- &quot;pregunta&quot;</code>; imprime respuesta + fuentes.</li>
+<li><code>telegram/bot.ts</code> — bot privado; <strong>whitelist</strong> de un solo <code>chat_id</code> (el dueño).</li>
+</ul>
+<h3>5.8 <code>scheduler.ts</code></h3>
+<p><code>node-cron</code> valida <code>BEE_CRON</code> y agenda <code>runPipeline</code> con timezone America/Caracas. Hace una
+corrida inicial al arrancar y mantiene el proceso vivo.</p>
+<hr>
+<h2>6. Configuración (.env)</h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Req.</th>
+<th>Default</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td>Sí (IA)</td>
+<td>—</td>
+<td>Clave de Claude.</td>
+</tr>
+<tr>
+<td><code>IA_MODEL_REASONING</code></td>
+<td>No</td>
+<td><code>claude-opus-4-8</code></td>
+<td>Modelo de razonamiento/respuesta.</td>
+</tr>
+<tr>
+<td><code>IA_MODEL_CHEAP</code></td>
+<td>No</td>
+<td><code>claude-haiku-4-5-20251001</code></td>
+<td>Modelo barato (clasificación).</td>
+</tr>
+<tr>
+<td><code>TELEGRAM_IA_BOT_TOKEN</code></td>
+<td>Solo bot</td>
+<td>—</td>
+<td>Token de @BotFather.</td>
+</tr>
+<tr>
+<td><code>TELEGRAM_JHONATTAN_CHAT_ID</code></td>
+<td>Solo bot</td>
+<td>—</td>
+<td>Único chat autorizado.</td>
+</tr>
+<tr>
+<td><code>BEE_LOOKBACK_DAYS</code></td>
+<td>No</td>
+<td><code>2</code></td>
+<td>Días hacia atrás por corrida.</td>
+</tr>
+<tr>
+<td><code>BEE_CRON</code></td>
+<td>No</td>
+<td>cada 6h</td>
+<td>Expresión cron de la descarga.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>7. Runbook (operación)</h2>
+<pre><code class="language-bash"># Setup
+cd C:\Proyectos\Jia
+npm install
+copy .env.example .env          # completar ANTHROPIC_API_KEY (+ Telegram opcional)
+
+# Backfill inicial (requiere CLI bee autenticado)
+npm run bee:download 120        # últimos 120 días
+
+# Generar perfil (consume tokens de Claude)
+npm run ia:profile
+
+# Preguntar
+npm run ia -- &quot;¿quién es Pablo y cuál fue su último proyecto?&quot;
+
+# Dejar el cron corriendo (descarga + procesa cada 6h)
+npm run scheduler
+
+# Producción
+npm run build &amp;&amp; npm start
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>npm run scheduler</code></td>
+<td>Cron 6h (corre una vez al iniciar).</td>
+</tr>
+<tr>
+<td><code>npm run bee:download [días]</code></td>
+<td>Pipeline completo una vez.</td>
+</tr>
+<tr>
+<td><code>npm run ia:normalize</code></td>
+<td>Solo normaliza lo descargado.</td>
+</tr>
+<tr>
+<td><code>npm run ia:profile</code></td>
+<td>Genera perfil/personas/estilo.</td>
+</tr>
+<tr>
+<td><code>npm run ia:index</code></td>
+<td>Reconstruye índice.</td>
+</tr>
+<tr>
+<td><code>npm run ia -- &quot;...&quot;</code></td>
+<td>Q&amp;A por consola.</td>
+</tr>
+<tr>
+<td><code>npm run ia:bot</code></td>
+<td>Bot de Telegram.</td>
+</tr>
+</tbody></table>
+<hr>
+<h2>8. Seguridad y privacidad</h2>
+<ul>
+<li><strong>Secretos en <code>.env</code></strong> (en <code>.gitignore</code>); nunca hardcodear claves. <code>data/</code> también está ignorado
+por contener información personal.</li>
+<li><strong>Reglas de privacidad</strong> en <code>brain/ask.ts</code>: ante temas íntimos/familiares/sensibles, no expone
+detalles y marca <code>[ESCALAR_A_JHONATTAN]</code>. <strong>Obligatorio</strong> antes de habilitar WhatsApp (Fase 3).</li>
+<li><strong>Telegram con whitelist</strong>: el bot solo responde al <code>chat_id</code> del dueño.</li>
+<li><strong>Calidad de datos</strong>: ~60% de utterances son &quot;Unknown&quot; y hay errores/mezcla ES-EN; por eso el
+perfil se construye sobre los <em>resúmenes</em> (más limpios) y debe revisarse a mano una vez.</li>
+</ul>
+<hr>
+<h2>9. Extensión y roadmap</h2>
+<p><strong>Mejoras técnicas previstas</strong></p>
+<ul>
+<li><strong>RAG con embeddings</strong> (Voyage / vector store local) si la búsqueda léxica se queda corta.</li>
+<li><strong>Tools de Claude</strong> de solo lectura para reportes de servidores (Fase 4).</li>
+<li><strong>Cola de aprobación</strong> persistente para borradores (Fases 3/5).</li>
+</ul>
+<p><strong>Fases del producto</strong></p>
+<ol>
+<li><strong>Fase 1 (esta):</strong> perfil + Q&amp;A con citas.</li>
+<li><strong>Fase 2:</strong> seguimiento de requerimientos (action_items con estado + recordatorios).</li>
+<li><strong>Fase 3:</strong> responder WhatsApp en modo borrador (clasificar remitente → redactar → aprobar).</li>
+<li><strong>Fase 4:</strong> reportes solo-lectura de servidores.</li>
+<li><strong>Fase 5:</strong> acciones simples con aprobación (pago móvil).</li>
+<li><strong>Fase 6:</strong> despliegue en la nube.</li>
+</ol>
+<hr>
+<h2>10. Glosario</h2>
+<ul>
+<li><strong>Bee Computer / CLI <code>bee</code></strong> — dispositivo y CLI que captura y entrega las conversaciones.</li>
+<li><strong>Utterance</strong> — intervención hablada (speaker + texto + offsets).</li>
+<li><strong>Normalización</strong> — limpieza/dedup a un JSONL homogéneo.</li>
+<li><strong>Perfil</strong> — fuente de verdad precomputada sobre Jhonattan.</li>
+<li><strong>Retrieve / RAG</strong> — recuperación de conversaciones relevantes para dar contexto al modelo.</li>
+<li><strong>Borrador + Aprobación</strong> — política de seguridad: la IA propone, el humano aprueba.</li>
+</ul>
+<hr>
+<p><em>Documento generado para el equipo de desarrollo de Jia. Versión 1.0 (Fase 1).</em></p>
+</body></html>
