@@ -16,14 +16,21 @@ dotenv.config({ path: path.join(ROOT, '.env') });
  * Todas las claves se leen de .env (nunca hardcodeadas).
  */
 export const config = {
-  // Motor: Groq (API compatible con OpenAI). Tier gratuito para empezar.
-  // Compatible-OpenAI: cambiar LLM_BASE_URL + key permite usar OpenRouter/DeepSeek/etc.
+  // Motor: backend seleccionable.
+  //   LLM_BACKEND=claude-cli -> usa el CLI `claude` (suscripcion Claude del servidor), sin key.
+  //   LLM_BACKEND=http (default) -> API compatible-OpenAI (Groq). Fallback.
   llm: {
+    backend: (process.env.LLM_BACKEND ?? 'http') as 'claude-cli' | 'http',
+    claudeBin: process.env.CLAUDE_BIN ?? 'claude',
     apiKey: process.env.GROQ_API_KEY ?? process.env.LLM_API_KEY ?? '',
     baseUrl: process.env.LLM_BASE_URL ?? 'https://api.groq.com/openai/v1',
     models: {
-      reasoning: process.env.IA_MODEL_REASONING ?? 'llama-3.3-70b-versatile',
-      cheap: process.env.IA_MODEL_CHEAP ?? 'llama-3.1-8b-instant',
+      reasoning:
+        process.env.IA_MODEL_REASONING ??
+        (process.env.LLM_BACKEND === 'claude-cli' ? 'sonnet' : 'llama-3.3-70b-versatile'),
+      cheap:
+        process.env.IA_MODEL_CHEAP ??
+        (process.env.LLM_BACKEND === 'claude-cli' ? 'haiku' : 'llama-3.1-8b-instant'),
     },
   },
 
@@ -92,7 +99,8 @@ export const config = {
 /** Lanza un error claro si falta una clave requerida. */
 export function requireConfig(keys: Array<'llm' | 'telegram'>): void {
   const missing: string[] = [];
-  if (keys.includes('llm') && !config.llm.apiKey) {
+  // El backend claude-cli usa la suscripcion del CLI (sin key). Solo 'http' exige key.
+  if (keys.includes('llm') && config.llm.backend === 'http' && !config.llm.apiKey) {
     missing.push('GROQ_API_KEY');
   }
   if (keys.includes('telegram')) {

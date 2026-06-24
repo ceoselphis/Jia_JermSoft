@@ -16,6 +16,10 @@ const PRICES: Record<string, ModelPricing> = {
   'llama-3.3-70b-versatile': { inputPerM: 0.59, outputPerM: 0.79, cacheReadPerM: 0, cacheWritePerM: 0 },
   'llama-3.1-8b-instant': { inputPerM: 0.05, outputPerM: 0.08, cacheReadPerM: 0, cacheWritePerM: 0 },
   'openai/gpt-oss-120b': { inputPerM: 0.15, outputPerM: 0.6, cacheReadPerM: 0, cacheWritePerM: 0 },
+  // --- Claude vía CLI (suscripcion). Estimacion como API (la suscripcion lo cubre). ---
+  sonnet: { inputPerM: 3.0, outputPerM: 15.0, cacheReadPerM: 0.3, cacheWritePerM: 3.75 },
+  haiku: { inputPerM: 1.0, outputPerM: 5.0, cacheReadPerM: 0.1, cacheWritePerM: 1.25 },
+  opus: { inputPerM: 15.0, outputPerM: 75.0, cacheReadPerM: 1.5, cacheWritePerM: 18.75 },
   // --- (Legado) por si quedan entradas viejas en usage.jsonl ---
   'gemini-2.5-flash': { inputPerM: 0.3, outputPerM: 2.5, cacheReadPerM: 0.075, cacheWritePerM: 0.3833 },
   'claude-opus-4-8': { inputPerM: 5.0, outputPerM: 25.0, cacheReadPerM: 0.5, cacheWritePerM: 6.25 },
