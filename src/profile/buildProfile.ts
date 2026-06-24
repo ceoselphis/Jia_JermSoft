@@ -143,7 +143,7 @@ export async function buildProfile(): Promise<void> {
   console.log(`Generando perfil con ${convs.length} conversaciones... (esto consume tokens)`);
 
   const bundle = await completeJson<ProfileBundle>(prompt, {
-    model: config.models.reasoning,
+    model: config.llm.models.reasoning,
     maxTokens: 4096,
     contexto: 'profile',
   });

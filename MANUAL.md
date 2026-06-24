@@ -5,7 +5,7 @@ Guía paso a paso para correr Jia (Jhonattan IA).
 ## Paso 0 · Requisitos (una sola vez)
 - **Node.js** → `node -v`
 - **CLI `bee`** autenticado → `bee --version`
-- **API key de Gemini** (Google AI Studio, gratis) → en `.env` como `GEMINI_API_KEY`
+- **API key de Groq** (Groq, gratis) → en `.env` como `GROQ_API_KEY`
 - **ntfy** (servidor Fibex) → ya en `.env`
 
 ## Paso 1 · Abrir el proyecto
@@ -30,7 +30,7 @@ npm run bee:download 120
 ```
 Hace: lista → detalle → normalizar → indexar. Idempotente (no duplica).
 
-## Paso 5 · Generar el perfil (usa Gemini)
+## Paso 5 · Generar el perfil (usa Groq)
 ```powershell
 npm run ia:profile
 ```
@@ -73,15 +73,15 @@ npm start          # corre dist/scheduler.js
 ```
 
 ## Problemas comunes
-- **"Faltan variables de entorno"** → revisa `.env` (GEMINI_API_KEY, NTFY_*).
+- **"Faltan variables de entorno"** → revisa `.env` (GROQ_API_KEY, NTFY_*).
 - **La descarga no baja nada** → `bee conversations list`; si pide login, reautentica.
 - **No llega la notificación** → server `https://ntfy.thomas-talk.me`, topic `fibex-jia-99`.
-- **Error de cuota/tokens de Gemini** → revisa límites/clave en https://aistudio.google.com/apikey.
+- **Error de cuota/tokens de Groq** → revisa límites/clave en https://console.groq.com/keys.
 
 ## Configuración (.env)
 | Variable | Para qué |
 |---|---|
-| `GEMINI_API_KEY` | Motor Gemini (obligatorio) |
+| `GROQ_API_KEY` | Motor Groq (obligatorio) |
 | `NTFY_SERVER` / `NTFY_TOPIC` / `NTFY_TOKEN` | Notificaciones de gasto |
 | `BEE_LOOKBACK_DAYS` | Días por corrida del cron (default 2) |
 | `BEE_CRON` / `COSTOS_CRON` | Frecuencia (default cada 6h) |

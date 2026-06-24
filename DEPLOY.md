@@ -3,7 +3,7 @@
 Pasos en orden para correr Jia en el **mismo servidor que Hermes Agent**.
 Copia/pega tal cual. Requiere un **VPS** con acceso SSH (no sirve hosting compartido).
 
-> Regla de oro: los secretos (`GEMINI_API_KEY`, tokens) se ponen **solo** en el
+> Regla de oro: los secretos (`GROQ_API_KEY`, tokens) se ponen **solo** en el
 > `.env` del servidor. Nunca en Git ni en el chat.
 
 ---
@@ -23,7 +23,7 @@ nano .env          # o vi .env
 ```
 Completa al menos:
 ```
-GEMINI_API_KEY=AIza...                # tu clave de Google Gemini (gratis en aistudio.google.com/apikey)
+GROQ_API_KEY=gsk_...                # tu clave de Groq (gratis en console.groq.com/keys)
 NTFY_SERVER=https://ntfy.thomas-talk.me
 NTFY_TOPIC=fibex-jia-99
 NTFY_TOKEN=tk_...                     # token write-only de ntfy
@@ -42,7 +42,7 @@ bee conversations list
 ## 4. Carga inicial (backfill) + perfil
 ```bash
 npm run bee:download 120     # descarga ~120 dias de conversaciones
-npm run ia:profile           # genera perfil/personas/estilo (usa Gemini)
+npm run ia:profile           # genera perfil/personas/estilo (usa Groq)
 ```
 
 ## 5. Conectar la memoria a Hermes
@@ -82,7 +82,7 @@ nohup npm run scheduler > scheduler.log 2>&1 &
 hermes model       # elige el modelo por defecto de Hermes
 ```
 > Nota: Hermes es un agente aparte con su propio motor. Si lo pones en Claude necesita una API
-> key de Anthropic activa (la nuestra está inválida — ver `CONTEXT.md`). Jia ya NO usa Anthropic: corre con Gemini.
+> key de Anthropic activa (la nuestra está inválida — ver `CONTEXT.md`). Jia ya NO usa Anthropic: corre con Groq.
 
 ---
 

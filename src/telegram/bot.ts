@@ -9,7 +9,7 @@ import { ask } from '../brain/ask';
  * Uso: npm run ia:bot
  */
 async function main(): Promise<void> {
-  requireConfig(['gemini', 'telegram']);
+  requireConfig(['llm', 'telegram']);
   const owner = String(config.telegram.ownerChatId);
   const bot = new TelegramBot(config.telegram.botToken, { polling: true });
 

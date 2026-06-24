@@ -2,12 +2,11 @@ import { config, requireConfig } from './config';
 import { recordUsage } from './usage/tracker';
 
 /**
- * Capa de modelo de Jia. Motor: Google Gemini (API REST nativa, sin SDK).
- * Mantiene la misma interfaz que usaba el resto del proyecto: complete() y
- * completeJson(). Cambiar de proveedor = cambiar solo este archivo.
+ * Capa de modelo de Jia. Motor: Groq (API compatible con OpenAI).
+ * Mantiene la misma interfaz para el resto del proyecto: complete() y
+ * completeJson(). Cambiar de proveedor compatible-OpenAI (Groq, OpenRouter,
+ * DeepSeek...) = solo cambiar LLM_BASE_URL y la API key en .env.
  */
-
-const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 export interface LlmOptions {
   system?: string;
@@ -17,49 +16,47 @@ export interface LlmOptions {
   contexto?: string;
 }
 
-interface GeminiResponse {
-  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
-  error?: { message?: string; status?: string };
+interface ChatResponse {
+  choices?: Array<{ message?: { content?: string } }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+  error?: { message?: string } | string;
 }
 
-/** Llama a Gemini, registra el uso/costo, y devuelve el texto plano. */
+/** Llama al modelo (Groq / OpenAI-compatible), registra uso/costo, devuelve texto. */
 export async function complete(prompt: string, opts: LlmOptions = {}): Promise<string> {
-  requireConfig(['gemini']);
-  const model = opts.model ?? config.models.reasoning;
+  requireConfig(['llm']);
+  const model = opts.model ?? config.llm.models.reasoning;
 
-  const body: Record<string, unknown> = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    generationConfig: { maxOutputTokens: opts.maxTokens ?? 2048 },
-  };
-  if (opts.system) body.system_instruction = { parts: [{ text: opts.system }] };
+  const messages: Array<{ role: string; content: string }> = [];
+  if (opts.system) messages.push({ role: 'system', content: opts.system });
+  messages.push({ role: 'user', content: prompt });
 
-  const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
+  const res = await fetch(`${config.llm.baseUrl}/chat/completions`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-goog-api-key': config.geminiApiKey,
+      authorization: `Bearer ${config.llm.apiKey}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ model, messages, max_tokens: opts.maxTokens ?? 2048 }),
   });
 
-  const data = (await res.json().catch(() => ({}))) as GeminiResponse;
+  const data = (await res.json().catch(() => ({}))) as ChatResponse;
   if (!res.ok || data.error) {
-    const msg = data.error?.message ?? JSON.stringify(data).slice(0, 300);
-    throw new Error(`Gemini API ${res.status}: ${msg}`);
+    const msg =
+      typeof data.error === 'string'
+        ? data.error
+        : data.error?.message ?? JSON.stringify(data).slice(0, 300);
+    throw new Error(`LLM API ${res.status}: ${msg}`);
   }
 
-  const u = data.usageMetadata ?? {};
+  const u = data.usage ?? {};
   recordUsage(
     model,
-    { input_tokens: u.promptTokenCount ?? 0, output_tokens: u.candidatesTokenCount ?? 0 },
+    { input_tokens: u.prompt_tokens ?? 0, output_tokens: u.completion_tokens ?? 0 },
     opts.contexto ?? 'desconocido',
   );
 
-  return (data.candidates?.[0]?.content?.parts ?? [])
-    .map((p) => p.text ?? '')
-    .join('')
-    .trim();
+  return (data.choices?.[0]?.message?.content ?? '').trim();
 }
 
 /** Como complete() pero parsea la respuesta como JSON (tolera fences ```json). */
@@ -72,7 +69,6 @@ export async function completeJson<T>(prompt: string, opts: LlmOptions = {}): Pr
   try {
     return JSON.parse(limpio) as T;
   } catch {
-    // Ultimo intento: extraer el primer bloque {...} o [...] balanceado-ish.
     const match = limpio.match(/[[{][\s\S]*[\]}]/);
     if (match) return JSON.parse(match[0]) as T;
     throw new Error(`La respuesta no es JSON valido:\n${raw.slice(0, 500)}`);

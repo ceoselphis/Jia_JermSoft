@@ -13,7 +13,7 @@ reportes de servidores (solo lectura), y llegar a responder como si fuera él.
 ## Decisiones tomadas (no recontestar)
 - **Autonomía:** borrador + aprobación. La IA *propone*, Jhonattan *aprueba*. Nada se envía/paga solo.
 - **Canales:** Telegram (consola de control), WhatsApp (responder por él, Fase 3), CLI (pruebas).
-- **Motor:** Google **Gemini** (`gemini-2.5-flash`, tier gratuito de AI Studio). *Cambiado desde Claude/Anthropic
+- **Motor:** Google **Groq** (`llama-3.3-70b-versatile`, tier gratuito de Groq). *Cambiado desde Claude/Anthropic
   en jun-2026* porque la cuenta de Anthropic rechazaba todas las API keys (`invalid x-api-key`) pese a billing
   activo — falla confirmada en PC y en servidor limpio. El motor vive aislado en `src/llm.ts` (REST, sin SDK).
 - **Proyecto propio:** se separó de `ClienteFeliz` a `C:\Proyectos\Jia` (este repo).
@@ -27,13 +27,13 @@ HECHO y verificado (typecheck verde):
 - Cron cada 6h: `src/scheduler.ts`.
 - Normalizador idempotente: `src/ingest/normalize.ts` (251 convs procesadas en origen; 208 sin ruido).
 - Índice léxico + retrieve: `src/index/buildIndex.ts` (verificado: 208 convs, ~19.9k vocabulario).
-- Cerebro: `src/brain/ask.ts` (Gemini + perfil + citas + privacidad).
+- Cerebro: `src/brain/ask.ts` (Groq + perfil + citas + privacidad).
 - Generador de perfil: `src/profile/buildProfile.ts` + semilla `personas.seed.ts`.
 - Interfaces: `src/cli.ts`, `src/telegram/bot.ts`.
 - Libro como fuente de estilo: `data/profile/libro.md`.
 
 PENDIENTE (requiere claves del usuario):
-- Poner `GEMINI_API_KEY` en `.env` y correr `npm run ia:profile` (genera perfil/personas/estilo).
+- Poner `GROQ_API_KEY` en `.env` y correr `npm run ia:profile` (genera perfil/personas/estilo).
 - Probar `npm run ia -- "..."`.
 - (Opcional) Telegram: `TELEGRAM_IA_BOT_TOKEN` + `TELEGRAM_JHONATTAN_CHAT_ID` → `npm run ia:bot`.
 - Backfill real con el CLI `bee` autenticado: `npm run bee:download 120`.

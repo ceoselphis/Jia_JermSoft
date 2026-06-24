@@ -87,7 +87,7 @@ export async function ask(pregunta: string, k = 6): Promise<RespuestaIA> {
     `informacion del contexto. Si toca temas privados, aplica la regla de privacidad.`;
 
   const respuesta = await complete(prompt, {
-    model: config.models.reasoning,
+    model: config.llm.models.reasoning,
     maxTokens: 1500,
     system,
     contexto: 'ask',

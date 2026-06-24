@@ -16,17 +16,15 @@ dotenv.config({ path: path.join(ROOT, '.env') });
  * Todas las claves se leen de .env (nunca hardcodeadas).
  */
 export const config = {
-  // Motor: Google Gemini (clave de Google AI Studio). Tier gratuito para empezar.
-  // Acepta GEMINI_API_KEY o GOOGLE_API_KEY (cualquiera de los dos nombres).
-  geminiApiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? '',
-  // (Legado) Anthropic — ya no se usa, se mantiene para compatibilidad de .env.
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
-
-  // Modelos: flash para razonar/responder, flash para clasificar/normalizar barato.
-  // Gratis en AI Studio. Se pueden sobreescribir con IA_MODEL_REASONING / IA_MODEL_CHEAP.
-  models: {
-    reasoning: process.env.IA_MODEL_REASONING ?? 'gemini-2.5-flash',
-    cheap: process.env.IA_MODEL_CHEAP ?? 'gemini-2.5-flash',
+  // Motor: Groq (API compatible con OpenAI). Tier gratuito para empezar.
+  // Compatible-OpenAI: cambiar LLM_BASE_URL + key permite usar OpenRouter/DeepSeek/etc.
+  llm: {
+    apiKey: process.env.GROQ_API_KEY ?? process.env.LLM_API_KEY ?? '',
+    baseUrl: process.env.LLM_BASE_URL ?? 'https://api.groq.com/openai/v1',
+    models: {
+      reasoning: process.env.IA_MODEL_REASONING ?? 'llama-3.3-70b-versatile',
+      cheap: process.env.IA_MODEL_CHEAP ?? 'llama-3.1-8b-instant',
+    },
   },
 
   telegram: {
@@ -90,10 +88,10 @@ export const config = {
 } as const;
 
 /** Lanza un error claro si falta una clave requerida. */
-export function requireConfig(keys: Array<'gemini' | 'telegram'>): void {
+export function requireConfig(keys: Array<'llm' | 'telegram'>): void {
   const missing: string[] = [];
-  if (keys.includes('gemini') && !config.geminiApiKey) {
-    missing.push('GEMINI_API_KEY');
+  if (keys.includes('llm') && !config.llm.apiKey) {
+    missing.push('GROQ_API_KEY');
   }
   if (keys.includes('telegram')) {
     if (!config.telegram.botToken) missing.push('TELEGRAM_IA_BOT_TOKEN');
