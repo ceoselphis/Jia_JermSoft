@@ -1,17 +1,13 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { config, requireConfig } from './config';
 import { recordUsage } from './usage/tracker';
 
-let client: Anthropic | null = null;
+/**
+ * Capa de modelo de Jia. Motor: Google Gemini (API REST nativa, sin SDK).
+ * Mantiene la misma interfaz que usaba el resto del proyecto: complete() y
+ * completeJson(). Cambiar de proveedor = cambiar solo este archivo.
+ */
 
-/** Cliente Anthropic perezoso (se crea solo cuando hace falta). */
-export function getClient(): Anthropic {
-  requireConfig(['anthropic']);
-  if (!client) {
-    client = new Anthropic({ apiKey: config.anthropicApiKey });
-  }
-  return client;
-}
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 export interface LlmOptions {
   system?: string;
@@ -21,22 +17,47 @@ export interface LlmOptions {
   contexto?: string;
 }
 
-/** Llama a Claude, registra el uso/costo, y devuelve el texto plano. */
+interface GeminiResponse {
+  candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+  error?: { message?: string; status?: string };
+}
+
+/** Llama a Gemini, registra el uso/costo, y devuelve el texto plano. */
 export async function complete(prompt: string, opts: LlmOptions = {}): Promise<string> {
+  requireConfig(['gemini']);
   const model = opts.model ?? config.models.reasoning;
-  // Nota: opus-4-8 / 4.7 NO aceptan `temperature` (devuelven 400). No la enviamos.
-  const res = await getClient().messages.create({
-    model,
-    max_tokens: opts.maxTokens ?? 2048,
-    system: opts.system,
-    messages: [{ role: 'user', content: prompt }],
+
+  const body: Record<string, unknown> = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: opts.maxTokens ?? 2048 },
+  };
+  if (opts.system) body.system_instruction = { parts: [{ text: opts.system }] };
+
+  const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-goog-api-key': config.geminiApiKey,
+    },
+    body: JSON.stringify(body),
   });
 
-  recordUsage(model, res.usage, opts.contexto ?? 'desconocido');
+  const data = (await res.json().catch(() => ({}))) as GeminiResponse;
+  if (!res.ok || data.error) {
+    const msg = data.error?.message ?? JSON.stringify(data).slice(0, 300);
+    throw new Error(`Gemini API ${res.status}: ${msg}`);
+  }
 
-  return res.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map((b) => b.text)
+  const u = data.usageMetadata ?? {};
+  recordUsage(
+    model,
+    { input_tokens: u.promptTokenCount ?? 0, output_tokens: u.candidatesTokenCount ?? 0 },
+    opts.contexto ?? 'desconocido',
+  );
+
+  return (data.candidates?.[0]?.content?.parts ?? [])
+    .map((p) => p.text ?? '')
     .join('')
     .trim();
 }

@@ -13,13 +13,13 @@ conversaciones que graba el dispositivo **Bee Computer** + su libro.
 
 ## Requisitos
 - Node 18+ y el CLI `bee` ya autenticado en el sistema (lo usa el descargador).
-- Una `ANTHROPIC_API_KEY` (Claude). Telegram es opcional.
+- Una `GEMINI_API_KEY` (Google Gemini, gratis en https://aistudio.google.com/apikey). Telegram es opcional.
 
 ## Setup
 ```bash
 cd C:\Proyectos\Jia
 npm install
-copy .env.example .env   # y completa ANTHROPIC_API_KEY (y Telegram si lo usas)
+copy .env.example .env   # y completa GEMINI_API_KEY (y Telegram si lo usas)
 ```
 
 ## Comandos
@@ -29,7 +29,7 @@ copy .env.example .env   # y completa ANTHROPIC_API_KEY (y Telegram si lo usas)
 | `npm run bee:download` | Corre el pipeline una vez (lista → detalle → normalize → index). |
 | `npm run bee:download 30` | Backfill: descarga los últimos 30 días. |
 | `npm run ia:normalize` | Solo normaliza lo ya descargado. |
-| `npm run ia:profile` | Genera `perfil.json`, `personas.json`, `estilo.md` (usa Claude). |
+| `npm run ia:profile` | Genera `perfil.json`, `personas.json`, `estilo.md` (usa Gemini). |
 | `npm run ia:index` | Reconstruye el índice de búsqueda. |
 | `npm run ia -- "tu pregunta"` | Pregunta por consola; responde como Jhonattan con citas. |
 | `npm run ia:bot` | Bot de Telegram (tu consola privada). |
@@ -40,14 +40,14 @@ copy .env.example .env   # y completa ANTHROPIC_API_KEY (y Telegram si lo usas)
 src/
   scheduler.ts          # cron cada 6h -> runPipeline
   config.ts             # lee .env (claves, ventana, cron)
-  llm.ts                # cliente Claude
+  llm.ts                # cliente Gemini (complete / completeJson)
   bee/
     ConversacionesByFecha.ts      # bee conversations list (rango dinámico)
     ConversacionesDetalleByDay.ts # bee conversations get -> por_dia
     pipeline.ts                   # list -> detalle -> normalize -> index
   ingest/normalize.ts   # limpia + dedup -> data/normalized/*.jsonl
   profile/
-    buildProfile.ts     # perfil/personas/estilo (Claude)
+    buildProfile.ts     # perfil/personas/estilo (Gemini)
     personas.seed.ts    # gente verificada (Pablo, Solet, Isael, Julián...) con alias
   index/buildIndex.ts   # búsqueda léxica + retrieve()
   brain/ask.ts          # responde como Jhonattan, con privacidad y citas

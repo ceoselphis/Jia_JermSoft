@@ -28,7 +28,7 @@ ejecutarse. La Fase 1 documentada aquí es **solo lectura**: ingesta, perfil y Q
 |---|---|
 | Lenguaje | TypeScript (CommonJS, target ES2020) |
 | Runtime | Node.js 18+ |
-| Motor IA | Claude (Anthropic) — `claude-opus-4-8`, `claude-haiku-4-5` |
+| Motor IA | Google Gemini — `gemini-2.5-flash` (REST, sin SDK). *Antes Claude/Anthropic, ver `CONTEXT.md`* |
 | Fuente de datos | CLI `bee` (Bee Computer) |
 | Programación | `node-cron` (cada 6h, configurable) |
 | Estado | Fase 1 completa (typecheck verde) |
@@ -60,14 +60,14 @@ ejecutarse. La Fase 1 documentada aquí es **solo lectura**: ingesta, perfil y Q
 ┌──────────────┐     ┌─────────────────┐                   │
 │ profile/     │     │ index/          │                   │
 │ buildProfile │     │ buildIndex      │                   │
-│ (Claude)     │     │ retrieve()      │                   │
+│ (Gemini)     │     │ retrieve()      │                   │
 └──────┬───────┘     └────────┬────────┘                   │
        │ perfil/personas/estilo        │ top-K + citas     │
        └──────────┬───────────┘────────┘                   │
                   ▼                                         │
         ┌───────────────────┐   system prompt = estilo     │
         │ brain/ask.ts       │   + perfil + privacidad      │
-        │ (Claude)           │                              │
+        │ (Gemini)           │                              │
         └─────────┬──────────┘                              │
         ┌─────────┼──────────┐                              │
         ▼         ▼          ▼                              │
@@ -105,7 +105,7 @@ C:\Proyectos\Jia\
 ├── src/
 │   ├── scheduler.ts        cron cada 6h → runPipeline
 │   ├── config.ts           carga .env; rutas; ventana/cron de Bee
-│   ├── llm.ts              cliente Anthropic (complete / completeJson)
+│   ├── llm.ts              cliente Gemini REST (complete / completeJson)
 │   ├── types.ts            tipos compartidos
 │   ├── cli.ts              consola de preguntas
 │   ├── bee/
@@ -115,12 +115,12 @@ C:\Proyectos\Jia\
 │   ├── ingest/
 │   │   └── normalize.ts    limpieza + dedup → JSONL
 │   ├── profile/
-│   │   ├── buildProfile.ts perfil/personas/estilo (Claude)
+│   │   ├── buildProfile.ts perfil/personas/estilo (Gemini)
 │   │   └── personas.seed.ts gente verificada con alias
 │   ├── index/
 │   │   └── buildIndex.ts   búsqueda léxica + retrieve()
 │   ├── brain/
-│   │   └── ask.ts          responde como Jhonattan (Claude)
+│   │   └── ask.ts          responde como Jhonattan (Gemini)
 │   └── telegram/
 │       └── bot.ts          consola de control privada
 └── data/                   (en .gitignore — datos sensibles)
@@ -201,11 +201,11 @@ interface NormalizedConversation {
 
 ### 5.1 `config.ts`
 Carga `.env` (vía `dotenv`) y expone `config` (claves, modelos, rutas, parámetros de Bee).
-`requireConfig(['anthropic' | 'telegram'])` lanza un error claro si falta una clave.
+`requireConfig(['gemini' | 'telegram'])` lanza un error claro si falta una clave.
 
 ### 5.2 `llm.ts`
-- `getClient()` — cliente Anthropic perezoso.
-- `complete(prompt, opts)` — devuelve texto plano.
+- Motor **Google Gemini** vía API REST (`generativelanguage.googleapis.com`), sin SDK.
+- `complete(prompt, opts)` — devuelve texto plano; registra uso/costo.
 - `completeJson<T>(prompt, opts)` — parsea JSON (tolera fences ```` ```json ````).
 
 ### 5.3 `ingest/normalize.ts`
@@ -220,14 +220,14 @@ Carga `.env` (vía `dotenv`) y expone `config` (claves, modelos, rutas, parámet
 - `buildIndex()` — valida y reporta estadísticas (vocabulario, tokens).
 
 ### 5.5 `profile/buildProfile.ts`
-Construye perfil/personas/estilo con Claude sobre los resúmenes + libro. Inyecta
+Construye perfil/personas/estilo con Gemini sobre los resúmenes + libro. Inyecta
 `personas.seed.ts` como pista y **garantiza** (merge) que toda persona de la semilla quede en
 `personas.json` con sus aliases (evita confusiones, p. ej. `Yul` ≠ `Dani`).
 
 ### 5.6 `brain/ask.ts`
 - `ask(pregunta, k = 6): { respuesta, citas }`.
 - Construye el system prompt con `estilo.md` + `perfil.json` + `personas.json` + **reglas de
-  privacidad**, recupera contexto con `retrieve()` y consulta `claude-opus-4-8`.
+  privacidad**, recupera contexto con `retrieve()` y consulta `gemini-2.5-flash`.
 
 ### 5.7 Interfaces
 - `cli.ts` — `npm run ia -- "pregunta"`; imprime respuesta + fuentes.
@@ -243,9 +243,9 @@ corrida inicial al arrancar y mantiene el proceso vivo.
 
 | Variable | Req. | Default | Descripción |
 |---|---|---|---|
-| `ANTHROPIC_API_KEY` | Sí (IA) | — | Clave de Claude. |
-| `IA_MODEL_REASONING` | No | `claude-opus-4-8` | Modelo de razonamiento/respuesta. |
-| `IA_MODEL_CHEAP` | No | `claude-haiku-4-5-20251001` | Modelo barato (clasificación). |
+| `GEMINI_API_KEY` | Sí (IA) | — | Clave de Google Gemini (AI Studio, gratis). |
+| `IA_MODEL_REASONING` | No | `gemini-2.5-flash` | Modelo de razonamiento/respuesta. |
+| `IA_MODEL_CHEAP` | No | `gemini-2.5-flash` | Modelo barato (clasificación). |
 | `TELEGRAM_IA_BOT_TOKEN` | Solo bot | — | Token de @BotFather. |
 | `TELEGRAM_JHONATTAN_CHAT_ID` | Solo bot | — | Único chat autorizado. |
 | `BEE_LOOKBACK_DAYS` | No | `2` | Días hacia atrás por corrida. |
@@ -259,12 +259,12 @@ corrida inicial al arrancar y mantiene el proceso vivo.
 # Setup
 cd C:\Proyectos\Jia
 npm install
-copy .env.example .env          # completar ANTHROPIC_API_KEY (+ Telegram opcional)
+copy .env.example .env          # completar GEMINI_API_KEY (+ Telegram opcional)
 
 # Backfill inicial (requiere CLI bee autenticado)
 npm run bee:download 120        # últimos 120 días
 
-# Generar perfil (consume tokens de Claude)
+# Generar perfil (consume tokens de Gemini)
 npm run ia:profile
 
 # Preguntar
@@ -305,7 +305,7 @@ npm run build && npm start
 
 **Mejoras técnicas previstas**
 - **RAG con embeddings** (Voyage / vector store local) si la búsqueda léxica se queda corta.
-- **Tools de Claude** de solo lectura para reportes de servidores (Fase 4).
+- **Tools de la IA (Gemini)** de solo lectura para reportes de servidores (Fase 4).
 - **Cola de aprobación** persistente para borradores (Fases 3/5).
 
 **Fases del producto**

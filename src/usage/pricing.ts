@@ -12,18 +12,14 @@ export interface ModelPricing {
 }
 
 const PRICES: Record<string, ModelPricing> = {
-  'claude-opus-4-8': {
-    inputPerM: 5.0,
-    outputPerM: 25.0,
-    cacheReadPerM: 0.5, // 5.0 * 0.1
-    cacheWritePerM: 6.25, // 5.0 * 1.25
-  },
-  'claude-haiku-4-5': {
-    inputPerM: 1.0,
-    outputPerM: 5.0,
-    cacheReadPerM: 0.1,
-    cacheWritePerM: 1.25,
-  },
+  // --- Google Gemini (USD por 1M tokens). Tier gratuito = $0; aqui se estima el de pago. ---
+  'gemini-2.5-pro': { inputPerM: 1.25, outputPerM: 10.0, cacheReadPerM: 0.31, cacheWritePerM: 1.625 },
+  'gemini-2.5-flash': { inputPerM: 0.3, outputPerM: 2.5, cacheReadPerM: 0.075, cacheWritePerM: 0.3833 },
+  'gemini-2.5-flash-lite': { inputPerM: 0.1, outputPerM: 0.4, cacheReadPerM: 0.025, cacheWritePerM: 0.1 },
+  'gemini-2.0-flash': { inputPerM: 0.1, outputPerM: 0.4, cacheReadPerM: 0.025, cacheWritePerM: 0.1 },
+  // --- (Legado) Claude, por si quedan entradas viejas en usage.jsonl ---
+  'claude-opus-4-8': { inputPerM: 5.0, outputPerM: 25.0, cacheReadPerM: 0.5, cacheWritePerM: 6.25 },
+  'claude-haiku-4-5': { inputPerM: 1.0, outputPerM: 5.0, cacheReadPerM: 0.1, cacheWritePerM: 1.25 },
 };
 
 /** Resuelve el precio de un modelo (tolera sufijos de fecha, p. ej. -20251001). */
@@ -33,8 +29,8 @@ export function pricingFor(model: string): ModelPricing {
   for (const key of Object.keys(PRICES)) {
     if (model.startsWith(key)) return PRICES[key];
   }
-  // Desconocido: usar opus como conservador (no subestimar el gasto).
-  return PRICES['claude-opus-4-8'];
+  // Desconocido: usar gemini-flash como referencia (motor actual).
+  return PRICES['gemini-2.5-flash'];
 }
 
 export interface TokenUsage {

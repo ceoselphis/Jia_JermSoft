@@ -16,12 +16,16 @@ dotenv.config({ path: path.join(ROOT, '.env') });
  * Todas las claves se leen de .env (nunca hardcodeadas).
  */
 export const config = {
+  // Motor: Google Gemini (clave de Google AI Studio). Tier gratuito para empezar.
+  geminiApiKey: process.env.GEMINI_API_KEY ?? '',
+  // (Legado) Anthropic — ya no se usa, se mantiene para compatibilidad de .env.
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
 
-  // Modelos: opus para razonar/responder, haiku para clasificar/normalizar barato.
+  // Modelos: flash para razonar/responder, flash para clasificar/normalizar barato.
+  // Gratis en AI Studio. Se pueden sobreescribir con IA_MODEL_REASONING / IA_MODEL_CHEAP.
   models: {
-    reasoning: process.env.IA_MODEL_REASONING ?? 'claude-opus-4-8',
-    cheap: process.env.IA_MODEL_CHEAP ?? 'claude-haiku-4-5-20251001',
+    reasoning: process.env.IA_MODEL_REASONING ?? 'gemini-2.5-flash',
+    cheap: process.env.IA_MODEL_CHEAP ?? 'gemini-2.5-flash',
   },
 
   telegram: {
@@ -85,10 +89,10 @@ export const config = {
 } as const;
 
 /** Lanza un error claro si falta una clave requerida. */
-export function requireConfig(keys: Array<'anthropic' | 'telegram'>): void {
+export function requireConfig(keys: Array<'gemini' | 'telegram'>): void {
   const missing: string[] = [];
-  if (keys.includes('anthropic') && !config.anthropicApiKey) {
-    missing.push('ANTHROPIC_API_KEY');
+  if (keys.includes('gemini') && !config.geminiApiKey) {
+    missing.push('GEMINI_API_KEY');
   }
   if (keys.includes('telegram')) {
     if (!config.telegram.botToken) missing.push('TELEGRAM_IA_BOT_TOKEN');
