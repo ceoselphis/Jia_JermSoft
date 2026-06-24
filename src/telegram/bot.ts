@@ -107,17 +107,40 @@ async function main(): Promise<void> {
       return;
     }
 
-    // --- Listar proyectos ---
+    // --- Listar proyectos (con detalle) ---
     if (low === '/proyectos') {
-      let lista: string[] = [];
+      const base = config.paths.proyectosDir;
+      let dirs: string[] = [];
       try {
-        lista = fs.readdirSync(config.paths.proyectosDir, { withFileTypes: true })
-          .filter((d) => d.isDirectory())
-          .map((d) => d.name);
+        dirs = fs.readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
       } catch { /* dir no existe aun */ }
+      if (!dirs.length) {
+        await bot.sendMessage(chatId, 'Aun no tienes proyectos. Crea uno con:\n/proyecto mi-app');
+        return;
+      }
+      const lineas = dirs
+        .map((p) => {
+          const dir = path.join(base, p);
+          let archivos = 0;
+          let fecha = '';
+          let desc = '';
+          try {
+            archivos = fs.readdirSync(dir).length;
+            fecha = fs.statSync(dir).mtime.toISOString().slice(0, 10);
+            for (const f of ['README.md', 'readme.md', '.jia.md']) {
+              const rp = path.join(dir, f);
+              if (fs.existsSync(rp)) {
+                desc = (fs.readFileSync(rp, 'utf-8').split('\n').find((l) => l.trim() && !l.startsWith('#')) ?? '').trim().slice(0, 70);
+                break;
+              }
+            }
+          } catch { /* ignore */ }
+          return `📁 ${p} — ${archivos} archivos · ${fecha}${desc ? `\n   ${desc}` : ''}`;
+        })
+        .sort();
       await bot.sendMessage(
         chatId,
-        lista.length ? 'Tus proyectos:\n' + lista.map((p) => `• ${p}`).join('\n') + '\n\nEntra con /proyecto <nombre>.' : 'Aun no tienes proyectos. Crea uno con /proyecto <nombre>.',
+        `Tus proyectos (${dirs.length}):\n\n${lineas.join('\n')}\n\nEntra con /proyecto <nombre>.`,
       );
       return;
     }
