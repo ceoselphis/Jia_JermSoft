@@ -17,7 +17,8 @@ dotenv.config({ path: path.join(ROOT, '.env') });
  */
 export const config = {
   // Motor: Google Gemini (clave de Google AI Studio). Tier gratuito para empezar.
-  geminiApiKey: process.env.GEMINI_API_KEY ?? '',
+  // Acepta GEMINI_API_KEY o GOOGLE_API_KEY (cualquiera de los dos nombres).
+  geminiApiKey: process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? '',
   // (Legado) Anthropic — ya no se usa, se mantiene para compatibilidad de .env.
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? '',
 
