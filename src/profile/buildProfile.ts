@@ -37,14 +37,11 @@ function corpusResumenes(
 ): string {
   return convs
     .map((c) => {
-      const tk = c.key_takeaways.slice(0, 4).join(' | ');
-      const ai = c.action_items.slice(0, 4).join(' | ');
-      const sum = c.summary.replace(/\s+/g, ' ').slice(0, 600);
-      return `[${c.fecha} #${c.id}] ${sum}${tk ? `\n  takeaways: ${tk}` : ''}${
-        ai ? `\n  acciones: ${ai}` : ''
-      }`;
+      const tk = c.key_takeaways.slice(0, 2).join(' | ');
+      const sum = c.summary.replace(/\s+/g, ' ').slice(0, 280);
+      return `[${c.fecha} #${c.id}] ${sum}${tk ? ` · ${tk}` : ''}`;
     })
-    .join('\n\n');
+    .join('\n');
 }
 
 const INSTRUCCIONES = `Eres un analista que construye un PERFIL preciso de una persona llamada Jhonattan,
@@ -119,10 +116,13 @@ function mergeSeed(deLlm: Persona[]): Persona[] {
 export async function buildProfile(): Promise<void> {
   await fs.mkdir(config.paths.profileDir, { recursive: true });
 
-  const convs = await leerNormalizadas(); // sin ruido
-  if (convs.length === 0) {
+  const convsAll = await leerNormalizadas(); // sin ruido
+  if (convsAll.length === 0) {
     throw new Error('No hay conversaciones normalizadas. Corre primero: npm run ia:normalize');
   }
+  // Limite de tokens del proveedor (Groq free = 12k TPM): usar las N mas recientes.
+  const MAX = Number(process.env.PROFILE_MAX_CONVS ?? 45);
+  const convs = [...convsAll].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)).slice(0, MAX);
 
   let libro = '';
   try {
@@ -135,16 +135,16 @@ export async function buildProfile(): Promise<void> {
     `${INSTRUCCIONES}\n\n` +
     `===== PERSONAS YA VERIFICADAS (inclúyelas SI o SI, completa y respeta sus aliases) =====\n` +
     `${JSON.stringify(PERSONAS_SEED, null, 2)}\n\n` +
-    `===== FUENTE 1: RESUMENES DE CONVERSACIONES (${convs.length}) =====\n` +
+    `===== FUENTE 1: RESUMENES DE CONVERSACIONES (${convs.length} mas recientes de ${convsAll.length}) =====\n` +
     `${corpusResumenes(convs)}\n\n` +
     `===== FUENTE 2: LIBRO DE JHONATTAN (estilo/valores) =====\n` +
-    `${libro.slice(0, 20000)}`;
+    `${libro.slice(0, 5000)}`;
 
   console.log(`Generando perfil con ${convs.length} conversaciones... (esto consume tokens)`);
 
   const bundle = await completeJson<ProfileBundle>(prompt, {
     model: config.llm.models.reasoning,
-    maxTokens: 4096,
+    maxTokens: 2200,
     contexto: 'profile',
   });
 
