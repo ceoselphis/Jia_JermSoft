@@ -23,9 +23,16 @@ function completeViaClaudeCli(prompt: string, opts: LlmOptions): Promise<string>
   const args = ['-p', '--output-format', 'json', '--model', model];
   if (opts.system) args.push('--append-system-prompt', opts.system);
 
+  // Importante: NO heredar ANTHROPIC_API_KEY (la del .env esta rota); asi claude
+  // usa las credenciales OAuth de la suscripcion guardadas en ~/.claude.
+  const env = { ...process.env };
+  delete env.ANTHROPIC_API_KEY;
+  delete env.ANTHROPIC_AUTH_TOKEN;
+
   return new Promise((resolve, reject) => {
     const child = spawn(config.llm.claudeBin, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
+      env,
     });
     let out = '';
     let err = '';
