@@ -75,6 +75,8 @@ export const config = {
     personasFile: path.join(ROOT, 'data', 'profile', 'personas.json'),
     estiloFile: path.join(ROOT, 'data', 'profile', 'estilo.md'),
     libroFile: path.join(ROOT, 'data', 'profile', 'libro.md'),
+    // Memoria: hechos que Jhonattan le ensena al bot ("recuerda: ...").
+    hechosFile: path.join(ROOT, 'data', 'profile', 'hechos.md'),
     indexDir: path.join(ROOT, 'data', 'index'),
     indexFile: path.join(ROOT, 'data', 'index', 'lexico.json'),
     usageDir: path.join(ROOT, 'data', 'usage'),

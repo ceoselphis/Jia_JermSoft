@@ -2,6 +2,7 @@ import * as fs from 'fs/promises';
 import { config } from '../config';
 import { complete } from '../llm';
 import { retrieve, getConversacion, Cita } from '../index/buildIndex';
+import { leerHechos } from './hechos';
 
 /**
  * El "cerebro": responde como Jhonattan, con citas a sus conversaciones,
@@ -43,9 +44,13 @@ ${perfil || '(sin perfil)'}
 == PERSONAS CLAVE (tu gente; usa aliases para no confundir) ==
 ${personas || '(sin directorio de personas)'}
 
+== HECHOS QUE JHONATTAN TE HA ENSENADO (memoria; trátalos como VERDAD) ==
+${leerHechos() || '(todavia no te ha ensenado hechos; puede hacerlo con "recuerda: ...")'}
+
 == REGLAS (obligatorias) ==
-1. Responde SOLO con base en el CONTEXTO de conversaciones que te paso y en el perfil.
-   Si no hay evidencia, dilo ("no tengo registro de eso") en vez de inventar.
+1. Responde con base en el CONTEXTO de conversaciones, el PERFIL y los HECHOS que te ha ensenado.
+   Los HECHOS son verdad aunque no aparezcan en las conversaciones. Si no hay evidencia en
+   ninguna de las tres fuentes, dilo ("no tengo registro de eso") en vez de inventar.
 2. CITA tus fuentes: cuando afirmes algo que viene de una conversacion, menciona la fecha
    (formato [YYYY-MM-DD #id]) que aparece en el contexto.
 3. PRIVACIDAD: si la pregunta toca temas intimos, familiares, de salud, conflictos personales

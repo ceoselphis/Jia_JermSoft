@@ -32,7 +32,7 @@ copy .env.example .env   # y completa GROQ_API_KEY (y Telegram si lo usas)
 | `npm run ia:profile` | Genera `perfil.json`, `personas.json`, `estilo.md` (usa Groq). |
 | `npm run ia:index` | Reconstruye el índice de búsqueda. |
 | `npm run ia -- "tu pregunta"` | Pregunta por consola; responde como Jhonattan con citas. |
-| `npm run ia:bot` | Bot de Telegram (tu consola privada). |
+| `npm run ia:bot` | Bot de Telegram (tu consola privada). Memoria: `recuerda: <algo>`, `/hechos`, `/olvida <n>`. |
 | `npm start` | Producción: `dist/scheduler.js` (tras `npm run build`). |
 
 ## Estructura

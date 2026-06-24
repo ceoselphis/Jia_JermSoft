@@ -31,6 +31,8 @@ HECHO y verificado (typecheck verde):
 - Generador de perfil: `src/profile/buildProfile.ts` + semilla `personas.seed.ts`.
 - Interfaces: `src/cli.ts`, `src/telegram/bot.ts`.
 - Libro como fuente de estilo: `data/profile/libro.md`.
+- **Memoria enseñable** (`src/brain/hechos.ts`): por Telegram `recuerda: <algo>` guarda en `data/profile/hechos.md`
+  y el cerebro lo inyecta como verdad. `/hechos` lista, `/olvida <n>` borra. Jia aprende de ti, no solo de Bee.
 
 PENDIENTE (requiere claves del usuario):
 - Poner `GROQ_API_KEY` en `.env` y correr `npm run ia:profile` (genera perfil/personas/estilo).
