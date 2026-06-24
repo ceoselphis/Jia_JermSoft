@@ -53,6 +53,7 @@ async function main(): Promise<void> {
 
     const texto = (msg.text ?? '').trim();
     if (!texto) return;
+    const low = texto.toLowerCase();
     if (texto === '/start' || texto === '/ayuda') {
       await bot.sendMessage(
         chatId,
@@ -124,7 +125,6 @@ async function main(): Promise<void> {
     }
 
     // --- Memoria: aprender un hecho ---
-    const low = texto.toLowerCase();
     let hecho = '';
     if (low.startsWith('/recuerda ')) hecho = texto.slice(10);
     else if (low.startsWith('recuerda que ')) hecho = texto.slice(13);
