@@ -5,35 +5,38 @@ import { recordUsage } from './usage/tracker';
 /**
  * Capa de modelo de Jia. Dos backends (config.llm.backend):
  *   - 'claude-cli' : usa el CLI `claude -p` (suscripcion Claude del servidor). Sin API key.
- *   - 'http'       : API compatible-OpenAI (Groq por defecto). Fallback.
- * Mantiene la interfaz: complete() y completeJson().
+ *                    Soporta SESIONES (--resume) para conversaciones con contexto (loop).
+ *   - 'http'       : API compatible-OpenAI (Groq por defecto). Fallback, sin sesiones.
  */
 
 export interface LlmOptions {
   system?: string;
   model?: string;
   maxTokens?: number;
-  /** Etiqueta para atribuir el gasto (p. ej. "ask", "profile"). */
+  /** Etiqueta para atribuir el gasto (p. ej. "ask", "profile", "chat"). */
   contexto?: string;
 }
 
-// ---------- Backend: Claude CLI (suscripcion) ----------
-function completeViaClaudeCli(prompt: string, opts: LlmOptions): Promise<string> {
-  const model = opts.model ?? config.llm.models.reasoning;
-  const args = ['-p', '--output-format', 'json', '--model', model];
-  if (opts.system) args.push('--append-system-prompt', opts.system);
+export interface SessionResult {
+  text: string;
+  sessionId?: string;
+}
 
-  // Importante: NO heredar ANTHROPIC_API_KEY (la del .env esta rota); asi claude
-  // usa las credenciales OAuth de la suscripcion guardadas en ~/.claude.
+// ---------- Runner del CLI de Claude (compartido) ----------
+function runClaude(
+  prompt: string,
+  args: string[],
+  model: string,
+  contexto: string,
+): Promise<SessionResult> {
+  // No heredar ANTHROPIC_API_KEY (la del .env esta rota); asi claude usa la
+  // credencial OAuth de la suscripcion guardada en ~/.claude.
   const env = { ...process.env };
   delete env.ANTHROPIC_API_KEY;
   delete env.ANTHROPIC_AUTH_TOKEN;
 
   return new Promise((resolve, reject) => {
-    const child = spawn(config.llm.claudeBin, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env,
-    });
+    const child = spawn(config.llm.claudeBin, args, { stdio: ['pipe', 'pipe', 'pipe'], env });
     let out = '';
     let err = '';
     const timer = setTimeout(() => child.kill('SIGKILL'), 600_000);
@@ -62,10 +65,10 @@ function completeViaClaudeCli(prompt: string, opts: LlmOptions): Promise<string>
             cache_creation_input_tokens: u.cache_creation_input_tokens ?? 0,
             cache_read_input_tokens: u.cache_read_input_tokens ?? 0,
           },
-          opts.contexto ?? 'desconocido',
+          contexto,
         );
-        resolve(String(data.result ?? '').trim());
-      } catch (e) {
+        resolve({ text: String(data.result ?? '').trim(), sessionId: data.session_id });
+      } catch {
         reject(new Error(`Respuesta no-JSON de claude CLI: ${out.slice(0, 300)}`));
       }
     });
@@ -74,7 +77,7 @@ function completeViaClaudeCli(prompt: string, opts: LlmOptions): Promise<string>
   });
 }
 
-// ---------- Backend: HTTP compatible-OpenAI (Groq) ----------
+// ---------- Backend HTTP compatible-OpenAI (Groq) ----------
 interface ChatResponse {
   choices?: Array<{ message?: { content?: string } }>;
   usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -89,10 +92,7 @@ async function completeViaHttp(prompt: string, opts: LlmOptions): Promise<string
 
   const res = await fetch(`${config.llm.baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      authorization: `Bearer ${config.llm.apiKey}`,
-    },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${config.llm.apiKey}` },
     body: JSON.stringify({ model, messages, max_tokens: opts.maxTokens ?? 2048 }),
   });
   const data = (await res.json().catch(() => ({}))) as ChatResponse;
@@ -112,11 +112,39 @@ async function completeViaHttp(prompt: string, opts: LlmOptions): Promise<string
   return (data.choices?.[0]?.message?.content ?? '').trim();
 }
 
-/** Llama al modelo segun el backend configurado y devuelve el texto plano. */
+/** Llamada de una sola vez (sin memoria). */
 export async function complete(prompt: string, opts: LlmOptions = {}): Promise<string> {
   requireConfig(['llm']);
-  if (config.llm.backend === 'claude-cli') return completeViaClaudeCli(prompt, opts);
+  const model = opts.model ?? config.llm.models.reasoning;
+  if (config.llm.backend === 'claude-cli') {
+    const args = ['-p', '--output-format', 'json', '--model', model];
+    if (opts.system) args.push('--append-system-prompt', opts.system);
+    const r = await runClaude(prompt, args, model, opts.contexto ?? 'desconocido');
+    return r.text;
+  }
   return completeViaHttp(prompt, opts);
+}
+
+/**
+ * Llamada CONVERSACIONAL con memoria (loop). Mantiene el hilo via sesiones de Claude:
+ *  - sin sessionId: arranca sesion nueva (aplica `system`).
+ *  - con sessionId: continua la conversacion previa (contexto correcto).
+ * Devuelve el texto y el sessionId (guardalo para el siguiente turno).
+ * En backend http (sin sesiones) responde stateless.
+ */
+export async function completeSession(
+  prompt: string,
+  opts: LlmOptions & { sessionId?: string } = {},
+): Promise<SessionResult> {
+  requireConfig(['llm']);
+  const model = opts.model ?? config.llm.models.reasoning;
+  if (config.llm.backend !== 'claude-cli') {
+    return { text: await completeViaHttp(prompt, opts) };
+  }
+  const args = ['-p', '--output-format', 'json', '--model', model];
+  if (opts.sessionId) args.push('--resume', opts.sessionId);
+  else if (opts.system) args.push('--append-system-prompt', opts.system);
+  return runClaude(prompt, args, model, opts.contexto ?? 'chat');
 }
 
 /** Como complete() pero parsea la respuesta como JSON (tolera fences ```json). */

@@ -62,6 +62,36 @@ ${leerHechos() || '(todavia no te ha ensenado hechos; puede hacerlo con "recuerd
 5. Se conciso y util. Si te piden un consejo, responde con la voz del libro (accion, constancia).`;
 }
 
+/** System prompt para el modo CONVERSACIONAL (loop con memoria de sesion). */
+export async function construirSystemChat(): Promise<string> {
+  const [perfil, personas, estilo] = await Promise.all([
+    leerArchivoOpcional(config.paths.perfilFile),
+    leerArchivoOpcional(config.paths.personasFile),
+    leerArchivoOpcional(config.paths.estiloFile),
+  ]);
+  return `Eres "Jia", el asistente personal de Jhonattan. Hablas espanol venezolano, con su tono.
+Mantienes el HILO de la conversacion: recuerda lo dicho en mensajes anteriores y construye sobre ello.
+Eres capaz y proactivo: ayudas con desarrollo de software, ideas, planificacion, decisiones y tareas — no solo preguntas personales.
+
+== QUIEN ES JHONATTAN (perfil) ==
+${perfil || '(sin perfil)'}
+
+== SU GENTE ==
+${personas || '(sin directorio)'}
+
+== ESTILO/VOZ ==
+${estilo || '(directo, motivador, orientado a la accion)'}
+
+== HECHOS QUE TE HA ENSENADO (trata como VERDAD) ==
+${leerHechos() || '(ninguno aun)'}
+
+== REGLAS ==
+- Manten SIEMPRE el contexto de la conversacion (es lo mas importante).
+- Si te piden algo tecnico (codigo, diseno de sistema), hazlo bien y completo.
+- Usa los HECHOS como verdad. Si no sabes algo personal, dilo en vez de inventar.
+- Conciso en chat; extiende cuando la tarea lo amerite.`;
+}
+
 /** Expande cada cita con un poco mas de texto de la conversacion (summary). */
 async function construirContexto(citas: Cita[]): Promise<string> {
   const bloques: string[] = [];

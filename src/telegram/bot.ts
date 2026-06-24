@@ -1,6 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import { config, requireConfig } from '../config';
-import { ask } from '../brain/ask';
+import { ask, construirSystemChat } from '../brain/ask';
+import { completeSession } from '../llm';
 import { agregarHecho, listarHechos, borrarHecho } from '../brain/hechos';
 
 /**
@@ -13,6 +14,9 @@ async function main(): Promise<void> {
   requireConfig(['llm', 'telegram']);
   const owner = String(config.telegram.ownerChatId);
   const bot = new TelegramBot(config.telegram.botToken, { polling: true });
+
+  // Memoria de conversacion por chat: sessionId del CLI de Claude (contexto/loop).
+  const sesiones = new Map<string, { sessionId?: string }>();
 
   console.log('Jhonattan IA (Telegram) escuchando. Solo respondera al chat autorizado.');
 
@@ -33,13 +37,21 @@ async function main(): Promise<void> {
     if (texto === '/start' || texto === '/ayuda') {
       await bot.sendMessage(
         chatId,
-        'Soy Jhonattan IA. Preguntame lo que quieras sobre tu vida, trabajo o gente, ' +
-          'y te respondo con citas a tus conversaciones.\n\n' +
-          'Memoria:\n' +
-          '• "recuerda: <algo>" — lo aprendo y lo uso de aqui en adelante.\n' +
-          '• /hechos — lista lo que me has ensenado.\n' +
-          '• /olvida <n> — borra el hecho numero n.',
+        'Soy Jia, tu asistente. Conversamos con HILO: recuerdo lo que hablamos y te ayudo ' +
+          'con lo que sea (desarrollo, ideas, decisiones).\n\n' +
+          'Comandos:\n' +
+          '• /nuevo — empezar una conversacion desde cero (borra el hilo).\n' +
+          '• /buscar <pregunta> — busca en tus conversaciones de Bee y responde con citas.\n' +
+          '• "recuerda: <algo>" — lo aprendo para siempre.\n' +
+          '• /hechos — lista lo aprendido · /olvida <n> — borra el hecho n.',
       );
+      return;
+    }
+
+    // --- Reiniciar el hilo de conversacion ---
+    if (texto === '/nuevo' || texto === '/reset') {
+      sesiones.delete(chatId);
+      await bot.sendMessage(chatId, '🔄 Conversacion reiniciada. Empecemos de cero.');
       return;
     }
 
@@ -82,20 +94,40 @@ async function main(): Promise<void> {
       return;
     }
 
+    // --- /buscar: Q&A sobre las conversaciones de Bee, con citas (sin memoria de hilo) ---
+    if (low.startsWith('/buscar ')) {
+      const q = texto.slice(8).trim();
+      try {
+        await bot.sendChatAction(chatId, 'typing');
+        const { respuesta, citas } = await ask(q);
+        let salida = respuesta;
+        if (citas.length) {
+          salida += '\n\n— Fuentes —\n' + citas.map((c) => `[${c.fecha} #${c.id}]`).join('  ');
+        }
+        await bot.sendMessage(chatId, salida);
+      } catch (e) {
+        await bot.sendMessage(chatId, 'Error en la busqueda: ' + (e instanceof Error ? e.message : String(e)));
+      }
+      return;
+    }
+
+    // --- Conversacion normal CON MEMORIA (loop): mantiene el hilo via sesion ---
     try {
       await bot.sendChatAction(chatId, 'typing');
-      const { respuesta, citas } = await ask(texto);
-      let salida = respuesta;
-      if (citas.length) {
-        salida +=
-          '\n\n— Fuentes —\n' +
-          citas.map((c) => `[${c.fecha} #${c.id}]`).join('  ');
-      }
-      await bot.sendMessage(chatId, salida);
+      const st = sesiones.get(chatId) ?? {};
+      // El system prompt (identidad de Jia) solo en el primer turno; luego la sesion lo conserva.
+      const system = st.sessionId ? undefined : await construirSystemChat();
+      const { text, sessionId } = await completeSession(texto, {
+        sessionId: st.sessionId,
+        system,
+        contexto: 'chat',
+      });
+      sesiones.set(chatId, { sessionId: sessionId ?? st.sessionId });
+      await bot.sendMessage(chatId, text || '(sin respuesta)');
     } catch (e) {
       await bot.sendMessage(
         chatId,
-        'Error procesando tu pregunta: ' + (e instanceof Error ? e.message : String(e)),
+        'Error procesando tu mensaje: ' + (e instanceof Error ? e.message : String(e)),
       );
     }
   });
