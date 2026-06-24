@@ -80,10 +80,15 @@ async function main(): Promise<void> {
     }
 
     // --- Entrar a MODO DESARROLLO en un proyecto ---
-    if (low.startsWith('/proyecto ')) {
-      const nombre = texto.slice(10).trim().replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
+    if (low === '/proyecto' || low.startsWith('/proyecto ')) {
+      const nombre = texto
+        .replace(/^\/proyecto\s*/i, '')
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 50);
       if (!nombre) {
-        await bot.sendMessage(chatId, 'Dale un nombre: /proyecto mi-app');
+        await bot.sendMessage(chatId, 'Dale un nombre al proyecto. Ej:\n/proyecto mi-app');
         return;
       }
       const cwd = path.join(config.paths.proyectosDir, nombre);
