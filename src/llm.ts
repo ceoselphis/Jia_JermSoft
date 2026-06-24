@@ -36,7 +36,7 @@ function completeViaClaudeCli(prompt: string, opts: LlmOptions): Promise<string>
     });
     let out = '';
     let err = '';
-    const timer = setTimeout(() => child.kill('SIGKILL'), 180_000);
+    const timer = setTimeout(() => child.kill('SIGKILL'), 600_000);
     child.stdout.on('data', (d) => (out += d));
     child.stderr.on('data', (d) => (err += d));
     child.on('error', (e) => {
