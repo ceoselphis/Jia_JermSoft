@@ -88,6 +88,8 @@ export const config = {
     indexFile: path.join(ROOT, 'data', 'index', 'lexico.json'),
     usageDir: path.join(ROOT, 'data', 'usage'),
     usageFile: path.join(ROOT, 'data', 'usage', 'usage.jsonl'),
+    // Workspaces donde Jia construye proyectos en MODO DESARROLLO (agente).
+    proyectosDir: process.env.PROYECTOS_DIR ?? path.resolve(ROOT, '..', 'proyectos'),
     // Salida para Hermes Agent: los 3 archivos de su memoria built-in.
     hermesDir: path.join(ROOT, 'data', 'hermes'),
     soulFile: path.join(ROOT, 'data', 'hermes', 'SOUL.md'),

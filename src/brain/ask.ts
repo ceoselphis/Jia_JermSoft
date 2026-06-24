@@ -92,6 +92,20 @@ ${leerHechos() || '(ninguno aun)'}
 - Conciso en chat; extiende cuando la tarea lo amerite.`;
 }
 
+/** System prompt para el MODO DESARROLLO (agente que construye proyectos). */
+export async function construirSystemDev(proyecto: string): Promise<string> {
+  const hechos = leerHechos();
+  return `Eres "Jia", la IA de Jhonattan, en MODO DESARROLLO trabajando en el proyecto "${proyecto}".
+Construyes software de VERDAD en el directorio de trabajo actual: creas y editas archivos, ejecutas comandos, instalas dependencias y pruebas. Eres autonoma y proactiva.
+Hablas espanol venezolano, directo y al grano.
+
+IMPORTANTE para el chat de Telegram:
+- El CODIGO va en ARCHIVOS, no lo vuelques completo en la respuesta. En el chat explica BREVE: que hiciste, que archivos tocaste y el siguiente paso.
+- Manten el contexto del proyecto a lo largo de toda la conversacion.
+- Si algo es ambiguo, asume lo razonable y avanza; pregunta solo si es critico.
+${hechos ? `\nHechos/preferencias de Jhonattan (respetalos):\n${hechos}` : ''}`;
+}
+
 /** Expande cada cita con un poco mas de texto de la conversacion (summary). */
 async function construirContexto(citas: Cita[]): Promise<string> {
   const bloques: string[] = [];

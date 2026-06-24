@@ -28,6 +28,7 @@ function runClaude(
   args: string[],
   model: string,
   contexto: string,
+  cwd?: string,
 ): Promise<SessionResult> {
   // No heredar ANTHROPIC_API_KEY (la del .env esta rota); asi claude usa la
   // credencial OAuth de la suscripcion guardada en ~/.claude.
@@ -36,7 +37,7 @@ function runClaude(
   delete env.ANTHROPIC_AUTH_TOKEN;
 
   return new Promise((resolve, reject) => {
-    const child = spawn(config.llm.claudeBin, args, { stdio: ['pipe', 'pipe', 'pipe'], env });
+    const child = spawn(config.llm.claudeBin, args, { stdio: ['pipe', 'pipe', 'pipe'], env, cwd });
     let out = '';
     let err = '';
     const timer = setTimeout(() => child.kill('SIGKILL'), 600_000);
@@ -145,6 +146,35 @@ export async function completeSession(
   if (opts.sessionId) args.push('--resume', opts.sessionId);
   else if (opts.system) args.push('--append-system-prompt', opts.system);
   return runClaude(prompt, args, model, opts.contexto ?? 'chat');
+}
+
+/**
+ * MODO DESARROLLO (agente): Claude construye de verdad en `cwd` —crea/edita
+ * archivos y ejecuta comandos— con permisos completos (suscripcion). Mantiene
+ * el hilo del proyecto via sesion. Solo backend claude-cli.
+ */
+export async function agentSession(
+  prompt: string,
+  opts: { sessionId?: string; system?: string; cwd: string; model?: string; contexto?: string },
+): Promise<SessionResult> {
+  requireConfig(['llm']);
+  if (config.llm.backend !== 'claude-cli') {
+    throw new Error('El modo desarrollo requiere LLM_BACKEND=claude-cli.');
+  }
+  const model = opts.model ?? config.llm.models.reasoning;
+  const args = [
+    '-p',
+    '--output-format',
+    'json',
+    '--model',
+    model,
+    '--dangerously-skip-permissions',
+    '--add-dir',
+    opts.cwd,
+  ];
+  if (opts.sessionId) args.push('--resume', opts.sessionId);
+  else if (opts.system) args.push('--append-system-prompt', opts.system);
+  return runClaude(prompt, args, model, opts.contexto ?? 'proyecto', opts.cwd);
 }
 
 /** Como complete() pero parsea la respuesta como JSON (tolera fences ```json). */
