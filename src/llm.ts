@@ -29,10 +29,11 @@ function runClaude(
   model: string,
   contexto: string,
   cwd?: string,
+  extraEnv?: Record<string, string>,
 ): Promise<SessionResult> {
   // No heredar ANTHROPIC_API_KEY (la del .env esta rota); asi claude usa la
   // credencial OAuth de la suscripcion guardada en ~/.claude.
-  const env = { ...process.env };
+  const env = { ...process.env, ...(extraEnv ?? {}) };
   delete env.ANTHROPIC_API_KEY;
   delete env.ANTHROPIC_AUTH_TOKEN;
 
@@ -174,7 +175,8 @@ export async function agentSession(
   ];
   if (opts.sessionId) args.push('--resume', opts.sessionId);
   else if (opts.system) args.push('--append-system-prompt', opts.system);
-  return runClaude(prompt, args, model, opts.contexto ?? 'proyecto', opts.cwd);
+  // IS_SANDBOX=1 permite --dangerously-skip-permissions aun corriendo como root.
+  return runClaude(prompt, args, model, opts.contexto ?? 'proyecto', opts.cwd, { IS_SANDBOX: '1' });
 }
 
 /** Como complete() pero parsea la respuesta como JSON (tolera fences ```json). */
